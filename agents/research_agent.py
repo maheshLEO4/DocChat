@@ -13,8 +13,14 @@ class ResearchAgent(BaseAgent):
     Also performs query rewriting when history is present.
     """
 
-    def __init__(self):
-        super().__init__(prompt_file="research.txt", temperature=0.1, max_tokens=600)
+    def __init__(self, model_provider: str | None = None, model_name: str | None = None):
+        super().__init__(
+            prompt_file="research.txt",
+            temperature=0.1,
+            max_tokens=600,
+            model_provider=model_provider,
+            model_name=model_name,
+        )
 
         # Load query-rewrite prompt from same prompts/ directory
         from pathlib import Path

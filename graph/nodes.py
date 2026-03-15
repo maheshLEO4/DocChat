@@ -39,7 +39,10 @@ def rewrite_query_node(state: AgentState) -> dict:
 
     logger.info("Node: rewrite_query")
     history = _format_history(state)
-    agent = ResearchAgent()
+    agent = ResearchAgent(
+        model_provider=state.get("model_provider"),
+        model_name=state.get("model_name"),
+    )
     rewritten = agent.rewrite_query(state["question"], history)
     return {"rewritten_query": rewritten}
 
@@ -55,7 +58,10 @@ def check_relevance_node(state: AgentState) -> dict:
 
     logger.info("Node: check_relevance")
     history = _format_history(state)
-    agent = RelevanceAgent()
+    agent = RelevanceAgent(
+        model_provider=state.get("model_provider"),
+        model_name=state.get("model_name"),
+    )
 
     label = agent.check(
         question=state["rewritten_query"],
@@ -85,7 +91,10 @@ def research_node(state: AgentState) -> dict:
 
     logger.info("Node: research")
     history = _format_history(state)
-    agent = ResearchAgent()
+    agent = ResearchAgent(
+        model_provider=state.get("model_provider"),
+        model_name=state.get("model_name"),
+    )
 
     result = agent.generate(
         question=state["rewritten_query"],
@@ -110,7 +119,10 @@ def verify_node(state: AgentState) -> dict:
     from agents.verification_agent import VerificationAgent
 
     logger.info("Node: verify")
-    agent = VerificationAgent()
+    agent = VerificationAgent(
+        model_provider=state.get("model_provider"),
+        model_name=state.get("model_name"),
+    )
     result = agent.check(
         answer=state["draft_answer"],
         documents=state["documents"],

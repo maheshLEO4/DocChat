@@ -4,7 +4,16 @@ import streamlit as st
 from ingestion import ingest_pdfs
 from retriever import HybridRetriever
 from graph import AgentWorkflow, Turn
-from config import UPLOAD_DIR, INDEX_DIR
+from config import (
+    UPLOAD_DIR,
+    INDEX_DIR,
+    GROQ_FREE_MODELS,
+    GEMINI_FREE_MODELS,
+    DEFAULT_PROVIDER,
+    DEFAULT_MODEL,
+    GROQ_API_KEY,
+    GEMINI_API_KEY,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config
@@ -27,6 +36,26 @@ with st.sidebar:
         "🔍 **Verification Mode**: ~6–10 s — checks answer quality"
     )
     st.divider()
+    st.subheader("Model")
+
+    provider_labels = ["Groq", "Gemini"]
+    provider_index = 0 if st.session_state.model_provider == "groq" else 1
+    provider_label = st.selectbox("Provider", provider_labels, index=provider_index)
+    model_provider = provider_label.lower()
+
+    model_options = GROQ_FREE_MODELS if model_provider == "groq" else GEMINI_FREE_MODELS
+    if st.session_state.model_name not in model_options:
+        st.session_state.model_name = model_options[0]
+
+    model_name = st.selectbox(
+        "Model",
+        model_options,
+        index=model_options.index(st.session_state.model_name),
+    )
+
+    st.session_state.model_provider = model_provider
+    st.session_state.model_name = model_name
+    st.divider()
     st.caption("Conversation memory: last **4** Q&A pairs")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -40,6 +69,8 @@ defaults = {
     "retriever":             None,
     "files_indexed":         False,
     "uploaded_file_names":   set(),
+    "model_provider":        DEFAULT_PROVIDER,
+    "model_name":            DEFAULT_MODEL,
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -127,6 +158,13 @@ for msg in st.session_state.chat_history:
 question = st.chat_input("Ask a question about your uploaded PDFs…")
 
 if question:
+    if st.session_state.model_provider == "groq" and not GROQ_API_KEY:
+        st.error("GROQ_API_KEY is not set. Add it to your secrets or .env file.")
+        st.stop()
+    if st.session_state.model_provider == "gemini" and not GEMINI_API_KEY:
+        st.error("GEMINI_API_KEY is not set. Add it to your secrets or .env file.")
+        st.stop()
+
     if not os.path.exists(INDEX_DIR) or not os.listdir(INDEX_DIR):
         st.warning("⚠️ Please upload and index PDFs first.")
         st.stop()
@@ -144,6 +182,8 @@ if question:
             question=question,
             retriever=st.session_state.retriever,
             conversation_history=st.session_state.conversation_history,
+            model_provider=st.session_state.model_provider,
+            model_name=st.session_state.model_name,
         )
 
     # ── Persist updated history window back to session ────────────────────

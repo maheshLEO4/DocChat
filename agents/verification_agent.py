@@ -10,8 +10,14 @@ class VerificationAgent(BaseAgent):
     Checks whether the draft answer is grounded in the retrieved documents.
     """
 
-    def __init__(self):
-        super().__init__(prompt_file="verification.txt", temperature=0.0, max_tokens=220)
+    def __init__(self, model_provider: str | None = None, model_name: str | None = None):
+        super().__init__(
+            prompt_file="verification.txt",
+            temperature=0.0,
+            max_tokens=220,
+            model_provider=model_provider,
+            model_name=model_name,
+        )
 
     def check(self, answer: str, documents: list[Document]) -> dict:
         """

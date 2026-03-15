@@ -32,3 +32,5 @@ class AgentState(TypedDict):
     retriever: Any                   # HybridRetriever instance (passed through)
     iteration_count: int             # tracks research→verify loops
     enable_verification: bool        # toggle slower verification path
+    model_provider: str              # "groq" | "gemini"
+    model_name: str                  # selected model name

@@ -28,7 +28,22 @@ BATCH_SIZE    = 1000   # nodes per indexing batch for large PDFs
 
 # ── LLM ──────────────────────────────────────────────────────────────────────
 GROQ_API_KEY  = os.getenv("GROQ_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LLM_MODEL     = "llama-3.1-8b-instant"
+
+GROQ_FREE_MODELS = [
+	"llama-3.1-8b-instant",
+	"llama-3.1-70b-versatile",
+	"mixtral-8x7b-32768",
+]
+
+GEMINI_FREE_MODELS = [
+	"gemini-1.5-flash",
+	"gemini-1.5-flash-8b",
+]
+
+DEFAULT_PROVIDER = "groq"
+DEFAULT_MODEL = GROQ_FREE_MODELS[0]
 
 # ── Workflow ──────────────────────────────────────────────────────────────────
 MAX_ITERATIONS = 2     # max research→verify loops before forcing end

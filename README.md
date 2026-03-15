@@ -15,8 +15,8 @@ Upload PDFs, index them, and chat with a multi-agent RAG workflow.
 
 1. Create a new Space and choose **Docker**.
 2. Upload this repository contents.
-3. Add a secret named `GROQ_API_KEY` in **Settings → Secrets**.
-4. The app will start automatically.
+3. Add a secret named `GROQ_API_KEY` or `GEMINI_API_KEY` in **Settings → Secrets**.
+4. Choose the provider and model in the app sidebar.
 
 ## Notes
 

@@ -132,6 +132,8 @@ class AgentWorkflow:
         question: str,
         retriever: Any,
         conversation_history: list[Turn] | None = None,
+        model_provider: str | None = None,
+        model_name: str | None = None,
     ) -> dict:
         """
         Run the full pipeline for one user turn.
@@ -183,6 +185,8 @@ class AgentWorkflow:
             "retriever": retriever,
             "iteration_count": 0,
             "enable_verification": self.enable_verification,
+            "model_provider": model_provider or "groq",
+            "model_name": model_name or "",
         }
 
         try:

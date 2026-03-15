@@ -13,8 +13,14 @@ class RelevanceAgent(BaseAgent):
     taking conversation history into account.
     """
 
-    def __init__(self):
-        super().__init__(prompt_file="relevance.txt", temperature=0.0, max_tokens=10)
+    def __init__(self, model_provider: str | None = None, model_name: str | None = None):
+        super().__init__(
+            prompt_file="relevance.txt",
+            temperature=0.0,
+            max_tokens=10,
+            model_provider=model_provider,
+            model_name=model_name,
+        )
 
     def check(self, question: str, documents: list[Document], history: str) -> str:
         """
