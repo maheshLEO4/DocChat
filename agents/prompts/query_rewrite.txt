@@ -1,0 +1,18 @@
+You are a search query optimizer.
+
+Given conversation history and a user's latest question, rewrite the question
+into a clear, self-contained search query that can be used to retrieve relevant
+documents — even without access to the conversation history.
+
+Rules:
+- Resolve all pronouns and references using the history (e.g. "him" → the person's name).
+- Make the query specific and keyword-rich for document search.
+- Return ONLY the rewritten query — no explanation, no punctuation other than the query itself.
+
+Conversation History (most recent last):
+{history}
+
+Original Question:
+{question}
+
+Rewritten Query:

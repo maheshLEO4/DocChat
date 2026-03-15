@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+.git/
+.gitignore
+.DS_Store
+.idea/
+.vscode/
+*.log
+*.db
+*.sqlite
+*.ipynb
+node_modules/
+
+# Space uploads and caches
+/data/
