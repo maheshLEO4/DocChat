@@ -1,6 +1,6 @@
 ---
 title: Multi-Agent Hybrid RAG
-emoji: ""
+emoji: "📝"
 colorFrom: "yellow"
 colorTo: "red"
 sdk: docker
