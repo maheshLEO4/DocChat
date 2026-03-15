@@ -22,6 +22,24 @@ st.set_page_config(page_title="Multi-Agent RAG", layout="wide")
 st.title("📚 Multi-Agent Hybrid RAG Chatbot")
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Session state initialisation
+# ─────────────────────────────────────────────────────────────────────────────
+defaults = {
+    # Each item: {"user": str, "assistant": str, "citations": list, "verification": str}
+    "chat_history":          [],
+    # Rolling window of Turn dicts passed into the graph
+    "conversation_history":  [],
+    "retriever":             None,
+    "files_indexed":         False,
+    "uploaded_file_names":   set(),
+    "model_provider":        DEFAULT_PROVIDER,
+    "model_name":            DEFAULT_MODEL,
+}
+for key, val in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Sidebar settings
 # ─────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -57,24 +75,6 @@ with st.sidebar:
     st.session_state.model_name = model_name
     st.divider()
     st.caption("Conversation memory: last **4** Q&A pairs")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Session state initialisation
-# ─────────────────────────────────────────────────────────────────────────────
-defaults = {
-    # Each item: {"user": str, "assistant": str, "citations": list, "verification": str}
-    "chat_history":          [],
-    # Rolling window of Turn dicts passed into the graph
-    "conversation_history":  [],
-    "retriever":             None,
-    "files_indexed":         False,
-    "uploaded_file_names":   set(),
-    "model_provider":        DEFAULT_PROVIDER,
-    "model_name":            DEFAULT_MODEL,
-}
-for key, val in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = val
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PDF upload & indexing
