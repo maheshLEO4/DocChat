@@ -6,7 +6,7 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── Data paths ──────────────────────────────────────────────────────────────
-DATA_DIR    = os.path.join(BASE_DIR, "data")
+DATA_DIR    = os.getenv("APP_DATA_DIR", os.path.join(BASE_DIR, "data"))
 UPLOAD_DIR  = os.path.join(DATA_DIR, "raw_pdfs")
 INDEX_DIR   = os.path.join(DATA_DIR, "llamaindex")
 
@@ -46,4 +46,4 @@ DEFAULT_PROVIDER = "groq"
 DEFAULT_MODEL = GROQ_FREE_MODELS[0]
 
 # ── Workflow ──────────────────────────────────────────────────────────────────
-MAX_ITERATIONS = 2     # max research→verify loops before forcing end
+MAX_ITERATIONS = 3     # max research→verify loops before forcing end
