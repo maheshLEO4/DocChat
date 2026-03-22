@@ -32,4 +32,6 @@ The container binds to Render's `PORT` automatically.
 
 - Indexing is done at runtime after upload.
 - Use a persistent disk in production so uploaded PDFs and indexes survive restarts.
+
+<!-- Trigger HF rebuild: no functional changes -->
 - Large PDFs may require a few minutes to index.
