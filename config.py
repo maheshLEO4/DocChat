@@ -15,6 +15,7 @@ os.makedirs(INDEX_DIR,  exist_ok=True)
 
 # ── Embedding ────────────────────────────────────────────────────────────────
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "64"))
 
 # ── Retrieval ────────────────────────────────────────────────────────────────
 TOP_K         = 6      # docs returned per retriever before fusion
@@ -22,9 +23,9 @@ FINAL_TOP_K   = 5      # docs kept after RRF fusion
 RRF_K         = 60     # RRF constant (higher = smoother rank blending)
 
 # ── Chunking ─────────────────────────────────────────────────────────────────
-CHUNK_SIZE    = 768
-CHUNK_OVERLAP = 80
-BATCH_SIZE    = 256    # nodes per indexing batch for large PDFs
+CHUNK_SIZE    = 600
+CHUNK_OVERLAP = 100
+BATCH_SIZE    = 1024   # nodes per indexing batch for large PDFs
 
 # ── LLM ──────────────────────────────────────────────────────────────────────
 GROQ_API_KEY  = os.getenv("GROQ_API_KEY")
