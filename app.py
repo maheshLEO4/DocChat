@@ -104,6 +104,11 @@ if uploaded_files:
 
         if st.button("📑 Index PDFs", type="primary", use_container_width=True):
             os.makedirs(UPLOAD_DIR, exist_ok=True)
+            incoming_names = {f.name for f in uploaded_files}
+            for name in os.listdir(UPLOAD_DIR):
+                path = os.path.join(UPLOAD_DIR, name)
+                if os.path.isfile(path) and name.lower().endswith(".pdf") and name not in incoming_names:
+                    os.remove(path)
             for f in uploaded_files:
                 dest = os.path.join(UPLOAD_DIR, f.name)
                 with open(dest, "wb") as fh:

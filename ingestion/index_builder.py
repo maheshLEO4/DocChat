@@ -1,8 +1,62 @@
+import hashlib
+import json
+import os
+import shutil
+
 from llama_index.core import VectorStoreIndex
-from config import INDEX_DIR, BATCH_SIZE
+
+from config import INDEX_DIR, BATCH_SIZE, UPLOAD_DIR
 from utils import get_logger
 
 logger = get_logger(__name__)
+MANIFEST_PATH = os.path.join(INDEX_DIR, "manifest.json")
+
+
+def _hash_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _build_manifest() -> dict:
+    files = []
+    for name in sorted(os.listdir(UPLOAD_DIR)):
+        path = os.path.join(UPLOAD_DIR, name)
+        if not os.path.isfile(path) or not name.lower().endswith(".pdf"):
+            continue
+        files.append({
+            "name": name,
+            "size": os.path.getsize(path),
+            "sha256": _hash_file(path),
+        })
+    return {"files": files}
+
+
+def _load_manifest() -> dict | None:
+    if not os.path.exists(MANIFEST_PATH):
+        return None
+    try:
+        with open(MANIFEST_PATH, "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception as exc:
+        logger.warning(f"Failed to read index manifest: {exc}")
+        return None
+
+
+def _save_manifest(manifest: dict) -> None:
+    with open(MANIFEST_PATH, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2)
+
+
+def _clear_index_dir() -> None:
+    for entry in os.listdir(INDEX_DIR):
+        path = os.path.join(INDEX_DIR, entry)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
 
 
 def build_index(nodes: list) -> VectorStoreIndex:
@@ -45,6 +99,15 @@ def ingest_pdfs(progress_callback=None):
             progress_callback(p, msg)
         logger.info(msg)
 
+    manifest = _build_manifest()
+    if not manifest["files"]:
+        raise RuntimeError("No PDF documents found in upload directory.")
+
+    existing_manifest = _load_manifest()
+    if existing_manifest == manifest and os.listdir(INDEX_DIR):
+        _cb(1.00, "PDF set unchanged. Reusing existing index.")
+        return
+
     _cb(0.05, "Configuring embedding model…")
     configure_embedding()
 
@@ -57,7 +120,11 @@ def ingest_pdfs(progress_callback=None):
     nodes = split_documents(docs)
     total = len(nodes)
 
+    _cb(0.45, "Refreshing stored index…")
+    _clear_index_dir()
+
     _cb(0.50, f"Created {total} chunk(s). Building vector index…")
     build_index(nodes)
+    _save_manifest(manifest)
 
     _cb(1.00, f"✅ Indexed {total} chunks successfully!")
