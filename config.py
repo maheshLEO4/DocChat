@@ -6,7 +6,22 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── Data paths ────────────────────────────────────────────────────────────────
-DATA_DIR   = os.getenv("APP_DATA_DIR", os.path.join(BASE_DIR, "data"))
+def _select_data_dir() -> str:
+    # Prefer explicit override.
+    env_dir = os.getenv("APP_DATA_DIR")
+    if env_dir:
+        return env_dir
+
+    # Hugging Face Spaces provide a writable /data volume.
+    hf_data = os.path.join("/data", "docchat")
+    if os.path.isdir("/data") and os.access("/data", os.W_OK):
+        return hf_data
+
+    # Fallback to local repo data folder.
+    return os.path.join(BASE_DIR, "data")
+
+
+DATA_DIR = _select_data_dir()
 COLLECTIONS_DIR = os.path.join(DATA_DIR, "collections")
 
 os.makedirs(COLLECTIONS_DIR, exist_ok=True)
