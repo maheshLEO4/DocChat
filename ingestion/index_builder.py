@@ -49,8 +49,6 @@ def ingest_pdfs(collection_name: str, progress_callback=None):
 
     _cb(0.10, "Loading PDF documents...")
     docs = load_pdfs(collection_name)
-    if not docs:
-        raise RuntimeError("No PDF documents found.")
 
     _cb(0.25, f"Loaded {len(docs)} pages(s). Splitting into chunks...")
     nodes = split_documents(docs)
