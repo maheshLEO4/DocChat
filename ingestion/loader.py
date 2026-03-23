@@ -1,7 +1,7 @@
 import os
 import fitz  # PyMuPDF
 from llama_index.core import Document
-from config import UPLOAD_DIR
+from config import get_upload_dir
 from utils import get_logger
 import re
 
@@ -18,13 +18,14 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def load_pdfs() -> list:
-    """Load all PDFs from UPLOAD_DIR using PyMuPDF and return LlamaIndex Document objects.""" 
+def load_pdfs(collection_name: str) -> list:
+    """Load all PDFs from the collection's upload dir using PyMuPDF and return LlamaIndex Document objects.""" 
     docs = []
+    upload_dir = get_upload_dir(collection_name)
     
-    for filename in os.listdir(UPLOAD_DIR):
+    for filename in os.listdir(upload_dir):
         if filename.lower().endswith(".pdf"):
-            filepath = os.path.join(UPLOAD_DIR, filename)
+            filepath = os.path.join(upload_dir, filename)
             try:
                 # Use PyMuPDF (fitz) - much better at preventing overlapping text bugs than pypdf
                 with fitz.open(filepath) as doc:
@@ -47,6 +48,6 @@ def load_pdfs() -> list:
 
     if docs:
         total_chars = sum(len(d.text) for d in docs)
-        logger.info(f"Loaded {len(docs)} page(s) from {UPLOAD_DIR}. Total characters: {total_chars}")
+        logger.info(f"Loaded {len(docs)} page(s) from {upload_dir}. Total characters: {total_chars}")
         
     return docs

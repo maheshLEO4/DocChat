@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import streamlit as st
 
@@ -6,87 +6,46 @@ from ingestion import ingest_pdfs
 from retriever import HybridRetriever
 from graph import AgentWorkflow, Turn
 from config import (
-    UPLOAD_DIR,
-    INDEX_DIR,
+    COLLECTIONS_DIR,
+    get_upload_dir,
+    get_index_dir,
     GROQ_FREE_MODELS,
     GEMINI_FREE_MODELS,
     DEFAULT_PROVIDER,
     DEFAULT_MODEL,
-    GROQ_API_KEY,
-    GEMINI_API_KEY,
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Startup cleanup — runs once per process launch
-# Wipes raw PDFs from UPLOAD_DIR on every restart.
-# The index (embeddings) in INDEX_DIR is kept so re-indexing is not needed
-# unless the user uploads new files.
-# ─────────────────────────────────────────────────────────────────────────────
-def _cleanup_uploads():
-    """Delete all raw PDFs from UPLOAD_DIR on startup."""
-    if os.path.exists(UPLOAD_DIR):
-        for root, dirs, files in os.walk(UPLOAD_DIR):
-            for name in files:
-                path = os.path.join(root, name)
-                if os.path.isfile(path):
-                    try:
-                        os.remove(path)
-                    except Exception:
-                        pass
-        # Also clean INDEX_DIR to ensure complete fresh start
-        if os.path.exists(INDEX_DIR):
-            for root, dirs, files in os.walk(INDEX_DIR):
-                for name in files:
-                    path = os.path.join(root, name)
-                    try:
-                        os.remove(path)
-                    except Exception:
-                        pass
-
-# Clean on every session start to prevent cross-session bleeding
-if "startup_cleanup_done" not in st.session_state:
-    _cleanup_uploads()
-    st.session_state["startup_cleanup_done"] = True
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Page config
-# ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Multi-Agent RAG", layout="wide")
-st.title("📚 Multi-Agent Hybrid RAG Chatbot")
+st.title(" Multi-Agent Hybrid RAG Chatbot")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Session state initialisation
-# ─────────────────────────────────────────────────────────────────────────────
+def get_all_collections():
+    if not os.path.exists(COLLECTIONS_DIR):
+        return ["default"]
+    cols = [d for d in os.listdir(COLLECTIONS_DIR) if os.path.isdir(os.path.join(COLLECTIONS_DIR, d))]
+    if "default" not in cols:
+        cols.append("default")
+    return sorted(list(set(cols)))
+
+os.makedirs(COLLECTIONS_DIR, exist_ok=True)
+
 defaults = {
     "chat_history":          [],
     "conversation_history":  [],
     "retriever":             None,
-    "files_indexed":         False,
-    "uploaded_file_names":   set(),
     "model_provider":        DEFAULT_PROVIDER,
     "model_name":            DEFAULT_MODEL,
+    "active_collection":     "default"
 }
 for key, val in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = val
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Sidebar settings
-# ─────────────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.header("⚙️ Settings")
-    enable_verification = st.checkbox(
-        "Enable Verification",
-        value=False,
-        help="🐌 Slower but validates answer accuracy. ⚡ Disable for 3× faster responses.",
-    )
-    st.info(
-        "⚡ **Fast Mode** (default): ~2–3 s\n\n"
-        "🔍 **Verification Mode**: ~6–10 s — checks answer quality"
-    )
+    st.header(" Settings")
+    enable_verification = st.checkbox("Enable Verification", value=False)
+    
     st.divider()
     st.subheader("Model")
-
     provider_labels = ["Groq", "Gemini"]
     provider_index = 0 if st.session_state.model_provider == "groq" else 1
     provider_label = st.selectbox("Provider", provider_labels, index=provider_index)
@@ -96,157 +55,178 @@ with st.sidebar:
     if st.session_state.model_name not in model_options:
         st.session_state.model_name = model_options[0]
 
-    model_name = st.selectbox(
-        "Model",
-        model_options,
-        index=model_options.index(st.session_state.model_name),
-    )
-
+    model_name = st.selectbox("Model", model_options, index=model_options.index(st.session_state.model_name))
     st.session_state.model_provider = model_provider
     st.session_state.model_name = model_name
+
     st.divider()
-    st.caption("Conversation memory: last **4** Q&A pairs")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PDF upload & indexing
-# ─────────────────────────────────────────────────────────────────────────────
-st.markdown("### 📄 Upload Documents")
-st.info("💡 **Tip**: For large PDFs (>50 MB / 200+ pages), split them first for faster processing.")
-
-uploaded_files = st.file_uploader(
-    "Upload PDF documents",
-    type=["pdf"],
-    accept_multiple_files=True,
-)
-
-if uploaded_files:
-    current_names = {f.name for f in uploaded_files}
-    if current_names != st.session_state.uploaded_file_names:
-        st.session_state.files_indexed = False
-        st.session_state.uploaded_file_names = current_names
+    st.subheader(" Collections")
+    all_collections = get_all_collections()
+    
+    selected_col = st.selectbox(
+        "Current Collection", 
+        all_collections, 
+        index=all_collections.index(st.session_state.active_collection) if st.session_state.active_collection in all_collections else 0
+    )
+    
+    # If collection changed:
+    if selected_col != st.session_state.active_collection:
+        st.session_state.active_collection = selected_col
         st.session_state.retriever = None
+        st.session_state.chat_history = []
         st.session_state.conversation_history = []
-
-    if not st.session_state.files_indexed:
-        total_mb = sum(f.size for f in uploaded_files) / (1024 * 1024)
-        if total_mb > 50:
-            st.warning(f"⚠️ Large upload ({total_mb:.1f} MB) — indexing may take a few minutes.")
-
-        if st.button("📑 Index PDFs", type="primary", use_container_width=True):
-            os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-            # Wipe UPLOAD_DIR before writing new files so no old PDFs bleed in
-            for name in os.listdir(UPLOAD_DIR):
-                path = os.path.join(UPLOAD_DIR, name)
-                if os.path.isfile(path):
-                    os.remove(path)
-
-            for f in uploaded_files:
-                dest = os.path.join(UPLOAD_DIR, f.name)
-                with open(dest, "wb") as fh:
-                    fh.write(f.getbuffer())
-
-            progress_bar = st.progress(0)
-            status_text  = st.empty()
-
-            try:
-                ingest_pdfs(
-                    progress_callback=lambda p, m: (
-                        progress_bar.progress(p), status_text.text(m)
-                    )
-                )
-                st.session_state.files_indexed = True
-                st.session_state.retriever = None
-                progress_bar.empty()
-                status_text.empty()
-                st.success("✅ PDFs indexed! You can now ask questions.")
-                st.rerun()
-            except MemoryError:
-                progress_bar.empty(); status_text.empty()
-                st.error("❌ File too large — split the PDF into smaller parts.")
-                st.session_state.files_indexed = False
-            except Exception as exc:
-                progress_bar.empty(); status_text.empty()
-                st.error(f"❌ Indexing failed: {exc}")
-                st.session_state.files_indexed = False
-    else:
-        st.success(f"✅ {len(uploaded_files)} file(s) indexed.")
-        if st.button("🔄 Re-index PDFs"):
-            st.session_state.files_indexed = False
+        st.rerun()
+    
+    c_new = st.text_input("New Collection Name")
+    if st.button("Create Collection"):
+        if c_new and c_new.strip() not in all_collections:
+            get_upload_dir(c_new.strip())
+            st.session_state.active_collection = c_new.strip()
+            st.session_state.retriever = None
+            st.session_state.chat_history = []
+            st.session_state.conversation_history = []
+            st.rerun()
+            
+    if selected_col != "default":
+        if st.button(f" Delete '{selected_col}'"):
+            shutil.rmtree(os.path.join(COLLECTIONS_DIR, selected_col))
+            st.session_state.active_collection = "default"
+            st.session_state.retriever = None
+            st.session_state.chat_history = []
+            st.session_state.conversation_history = []
             st.rerun()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Render existing chat history
-# ─────────────────────────────────────────────────────────────────────────────
+current_col = st.session_state.active_collection
+upload_dir = get_upload_dir(current_col)
+index_dir = get_index_dir(current_col)
+
+# Collection Manager
+st.markdown(f"###  Documents in [{current_col}]")
+col_files = [f for f in os.listdir(upload_dir) if f.lower().endswith('.pdf')]
+
+if col_files:
+    for f in col_files:
+        col1, col2 = st.columns([0.9, 0.1])
+        col1.write(f" {f}")
+        if col2.button("", key=f"del_{f}"):
+            os.remove(os.path.join(upload_dir, f))
+            # Delete removes item from the upload dir, prompt re-index
+            st.session_state.retriever = None 
+            st.rerun()
+else:
+    st.info("No documents in this collection.")
+
+uploaded_files = st.file_uploader(f"Add PDFs to '{current_col}'", type=["pdf"], accept_multiple_files=True)
+
+if uploaded_files:
+    saved_any = False
+    for f in uploaded_files:
+        dest = os.path.join(upload_dir, f.name)
+        if not os.path.exists(dest):
+            with open(dest, "wb") as fh:
+                fh.write(f.getbuffer())
+            saved_any = True
+    if saved_any:
+        st.success("Files uploaded! Click 'Index Collection' to apply changes.")
+        st.rerun()
+
+colbase_has_pdf = len(os.listdir(upload_dir)) > 0
+index_exists = os.path.exists(index_dir) and len(os.listdir(index_dir)) > 0
+
+if colbase_has_pdf:
+    if st.button(" Index / Re-index Collection", type="primary"):
+        progress_bar = st.progress(0)
+        status_text  = st.empty()
+        try:
+            ingest_pdfs(
+                collection_name=current_col,
+                progress_callback=lambda p, m: (progress_bar.progress(p), status_text.text(m))
+            )
+            st.session_state.retriever = None
+            progress_bar.empty()
+            status_text.empty()
+            st.success(" Collection indexed! You can now ask questions.")
+            st.rerun()
+        except Exception as exc:
+            progress_bar.empty(); status_text.empty()
+            st.error(f" Indexing failed: {exc}")
+
+st.divider()
+
+# Chat
 for msg in st.session_state.chat_history:
     st.chat_message("user").write(msg["user"])
     st.chat_message("assistant").write(msg["assistant"])
-
     if msg.get("citations"):
-        st.caption("📎 Sources: " + " · ".join(f"`{c}`" for c in msg["citations"]))
-
+        st.caption(" Sources: " + "  ".join(f"{c}" for c in msg["citations"]))
     if msg.get("verification"):
-        with st.expander("🔍 Verification Report", expanded=False):
+        with st.expander(" Verification Report", expanded=False):
             st.markdown(msg["verification"])
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Chat input
-# ─────────────────────────────────────────────────────────────────────────────
-question = st.chat_input("Ask a question about your uploaded PDFs…")
+question = st.chat_input(f"Ask about '{current_col}'...")
 
 if question:
-    if st.session_state.model_provider == "groq" and not GROQ_API_KEY:
-        st.error("GROQ_API_KEY is not set. Add it to your secrets or .env file.")
-        st.stop()
-    if st.session_state.model_provider == "gemini" and not GEMINI_API_KEY:
-        st.error("GEMINI_API_KEY is not set. Add it to your secrets or .env file.")
-        st.stop()
-
-    if not os.path.exists(INDEX_DIR) or not os.listdir(INDEX_DIR):
-        st.warning("⚠️ Please upload and index PDFs first.")
+    if not index_exists:
+        st.warning(" Please index the collection first before asking questions.")
         st.stop()
 
     if st.session_state.retriever is None:
-        with st.spinner("Loading retriever…"):
-            st.session_state.retriever = HybridRetriever()
-
-    workflow = AgentWorkflow(enable_verification=enable_verification)
-
-    spinner_msg = "🤔 Thinking…" if not enable_verification else "🤔 Thinking and verifying…"
-    with st.spinner(spinner_msg):
-        result = workflow.run(
-            question=question,
-            retriever=st.session_state.retriever,
-            conversation_history=st.session_state.conversation_history,
-            model_provider=st.session_state.model_provider,
-            model_name=st.session_state.model_name,
-        )
-
-    st.session_state.conversation_history = result["updated_history"]
-
-    st.session_state.chat_history.append({
-        "user":         question,
-        "assistant":    result["draft_answer"],
-        "citations":    result.get("citations", []),
-        "verification": result.get("verification_report", ""),
-    })
+        with st.spinner("Loading retriever..."):
+            try:
+                st.session_state.retriever = HybridRetriever(collection_name=current_col)
+            except Exception as e:
+                st.error(str(e))
+                st.stop()
 
     st.chat_message("user").write(question)
-    st.chat_message("assistant").write(result["draft_answer"])
+    
+    with st.chat_message("assistant"):
+        status = st.empty()
+        status.info("Retrieving documents...")
 
-    if result.get("citations"):
-        st.caption("📎 Sources: " + " · ".join(f"`{c}`" for c in result["citations"]))
+        retrieved_docs = st.session_state.retriever.invoke(question)
+        if not retrieved_docs:
+            status.warning("No relevant chunk found.")
+            st.stop()
 
-    if result.get("verification_report"):
-        with st.expander("🔍 Verification Report", expanded=False):
-            st.markdown(result["verification_report"])
+        status.info("Reasoning...")
+        turn = Turn(
+            question=question,
+            retrieved_docs=retrieved_docs,
+            conversation_history=st.session_state.conversation_history.copy(),
+            enable_verification=enable_verification,
+            provider=st.session_state.model_provider,
+            model=st.session_state.model_name
+        )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Clear conversation button (sidebar)
-# ─────────────────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.divider()
-    if st.button("🗑️ Clear conversation", use_container_width=True):
-        st.session_state.chat_history         = []
-        st.session_state.conversation_history = []
-        st.rerun()
+        wf = AgentWorkflow()
+        final_state = wf.run(turn)
+
+        status.empty()
+
+        ans = final_state.get("final_answer", "")
+        if not ans:
+            st.warning("Could not generate an answer.")
+            st.stop()
+
+        st.write(ans)
+        citations = [d.metadata.get('file_name', 'unknown') for d in retrieved_docs]
+        unique_citations = list(dict.fromkeys(citations))
+        st.caption(" Sources: " + "  ".join(f"{c}" for c in unique_citations))
+
+        vr = final_state.get("verification_result")
+        if vr:
+            with st.expander(" Verification Report"):
+                st.markdown(vr)
+
+        st.session_state.chat_history.append({
+            "user": question,
+            "assistant": ans,
+            "citations": unique_citations,
+            "verification": vr
+        })
+
+        st.session_state.conversation_history.append({"role": "user", "content": question})
+        st.session_state.conversation_history.append({"role": "assistant", "content": ans})
+        if len(st.session_state.conversation_history) > 8:
+            st.session_state.conversation_history = st.session_state.conversation_history[-8:]

@@ -1,50 +1,26 @@
-"""
-ingestion/index_builder.py
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-Builds and persists a VectorStoreIndex from LlamaIndex nodes.
-
-Fixes:
-- Wipes INDEX_DIR before rebuilding so re-uploads never mix stale
-  and new vectors (was the cause of wrong/irrelevant retrieval results).
-- insert_batch_size=BATCH_SIZE keeps peak RAM bounded on HF Spaces.
-- Progress callback covers the full 0→1 range so the Streamlit bar
-  never appears frozen.
-"""
-
-import os
+﻿import os
 import shutil
-
 from llama_index.core import VectorStoreIndex
-
-from config import BATCH_SIZE, INDEX_DIR
+from config import BATCH_SIZE, get_index_dir
 from utils import get_logger
 
 logger = get_logger(__name__)
 
-
-def build_index(nodes: list, progress_callback=None) -> VectorStoreIndex:
-    """
-    Build and persist a VectorStoreIndex from *nodes*.
-
-    Args:
-        nodes:             LlamaIndex TextNode list
-        progress_callback: optional (float, str) callable for UI updates
-    """
+def build_index(nodes: list, collection_name: str, progress_callback=None) -> VectorStoreIndex:
     def _cb(p, m):
         if progress_callback:
             progress_callback(p, m)
         logger.info(m)
 
+    index_dir = get_index_dir(collection_name)
     total = len(nodes)
-    logger.info(f"Building index from {total} nodes (insert_batch_size={BATCH_SIZE})")
+    logger.info(f"Building index from {total} nodes")
+    
+    if os.path.exists(index_dir):
+        shutil.rmtree(index_dir)
+    os.makedirs(index_dir, exist_ok=True)
 
-    # Always wipe old index — stale vectors from previous uploads cause
-    # irrelevant retrieval results on re-indexing.
-    if os.path.exists(INDEX_DIR):
-        shutil.rmtree(INDEX_DIR)
-    os.makedirs(INDEX_DIR, exist_ok=True)
-
-    _cb(0.1, f"Embedding {total} chunks… (this takes the longest on CPU)")
+    _cb(0.1, f"Embedding {total} chunks...")
 
     index = VectorStoreIndex(
         nodes,
@@ -52,26 +28,13 @@ def build_index(nodes: list, progress_callback=None) -> VectorStoreIndex:
         insert_batch_size=BATCH_SIZE,
     )
 
-    _cb(0.9, "Persisting index to disk…")
-    index.storage_context.persist(persist_dir=INDEX_DIR)
-
+    _cb(0.9, "Persisting index to disk...")
+    index.storage_context.persist(persist_dir=index_dir)
     _cb(1.0, f"Index built and saved ({total} chunks)")
-    logger.info(f"Index persisted to {INDEX_DIR}")
+    logger.info(f"Index persisted to {index_dir}")
     return index
 
-
-def ingest_pdfs(progress_callback=None):
-    """
-    Full ingestion pipeline: configure → load → split → embed → index.
-
-    Progress milestones:
-        0.05  configuring embedding model
-        0.10  loading PDFs
-        0.25  splitting into chunks
-        0.35  starting index build  (slow — embedding all chunks on CPU)
-        0.95  persisting to disk
-        1.00  done
-    """
+def ingest_pdfs(collection_name: str, progress_callback=None):
     from ingestion.embedding import configure_embedding
     from ingestion.loader import load_pdfs
     from ingestion.splitter import split_documents
@@ -81,24 +44,22 @@ def ingest_pdfs(progress_callback=None):
             progress_callback(p, m)
         logger.info(m)
 
-    _cb(0.05, "Loading embedding model (cached after first run)…")
+    _cb(0.05, "Loading embedding model...")
     configure_embedding()
 
-    _cb(0.10, "Loading PDF documents…")
-    docs = load_pdfs()
+    _cb(0.10, "Loading PDF documents...")
+    docs = load_pdfs(collection_name)
     if not docs:
-        raise RuntimeError("No PDF documents found in the upload directory.")
+        raise RuntimeError("No PDF documents found.")
 
-    _cb(0.25, f"Loaded {len(docs)} document(s). Splitting into chunks…")
+    _cb(0.25, f"Loaded {len(docs)} pages(s). Splitting into chunks...")
     nodes = split_documents(docs)
     total = len(nodes)
 
-    _cb(0.35, f"{total} chunks ready. Embedding on CPU — please wait…")
+    _cb(0.35, f"{total} chunks ready. Embedding...")
 
-    # Scale build progress into the 0.35 → 0.95 band
     def _build_cb(p, m):
         _cb(0.35 + p * 0.60, m)
 
-    build_index(nodes, progress_callback=_build_cb)
-
-    _cb(1.00, f"✅ Done! Indexed {total} chunks.")
+    build_index(nodes, collection_name, progress_callback=_build_cb)
+    _cb(1.00, f"Done! Indexed {total} chunks.")

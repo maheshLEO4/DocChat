@@ -7,11 +7,22 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── Data paths ────────────────────────────────────────────────────────────────
 DATA_DIR   = os.getenv("APP_DATA_DIR", os.path.join(BASE_DIR, "data"))
-UPLOAD_DIR = os.path.join(DATA_DIR, "raw_pdfs")
-INDEX_DIR  = os.path.join(DATA_DIR, "llamaindex")
+COLLECTIONS_DIR = os.path.join(DATA_DIR, "collections")
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(INDEX_DIR,  exist_ok=True)
+os.makedirs(COLLECTIONS_DIR, exist_ok=True)
+
+def get_collection_dir(collection_name: str) -> str:
+    return os.path.join(COLLECTIONS_DIR, collection_name)
+
+def get_upload_dir(collection_name: str) -> str:
+    path = os.path.join(get_collection_dir(collection_name), "raw_pdfs")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+def get_index_dir(collection_name: str) -> str:
+    path = os.path.join(get_collection_dir(collection_name), "llamaindex")
+    os.makedirs(path, exist_ok=True)
+    return path
 
 # ── Embedding ─────────────────────────────────────────────────────────────────
 # all-MiniLM-L6-v2: 22 MB, 384-dim, fast on CPU.
