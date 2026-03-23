@@ -13,7 +13,7 @@ from config import (
     DEFAULT_MODEL,
 )
 
-st.set_page_config(page_title="Docchat", layout="wide")
+st.set_page_config(page_title="🐥 DocChat", layout="wide")
 
 st.markdown(
     """
@@ -121,7 +121,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="hero-title">Multi-Agent Hybrid RAG</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-title">🐥 DocChat</div>', unsafe_allow_html=True)
 st.markdown(
     '<p class="hero-subtitle">Upload PDFs, index them, and chat with grounded answers.</p>',
     unsafe_allow_html=True,
