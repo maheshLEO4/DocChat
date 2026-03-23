@@ -14,8 +14,8 @@ INDEX_DIR = os.path.join(DATA_DIR, "llamaindex")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(INDEX_DIR, exist_ok=True)
 
-# Embedding (Using a smaller, much faster model for CPU environments)
-EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+# Embedding (Using a highly optimized, lightweight model for fast CPU environments)
+EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 # Retrieval
 TOP_K = 6
@@ -25,8 +25,8 @@ RRF_K = 60
 # Chunking
 CHUNK_SIZE = 600
 CHUNK_OVERLAP = 100
-BATCH_SIZE = 256
-EMBED_BATCH_SIZE = 32
+BATCH_SIZE = 512
+EMBED_BATCH_SIZE = 64
 
 # LLM
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
