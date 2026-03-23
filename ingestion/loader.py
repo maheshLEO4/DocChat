@@ -86,8 +86,15 @@ def load_pdfs(collection_name: str) -> list:
             logger.warning(
                 "Extracted text is unusually large. Attempting auto-clean by de-duplicating lines."
             )
+            cleaned_docs = []
             for doc in docs:
-                doc.text = _dedupe_lines(doc.text)
+                cleaned_docs.append(
+                    Document(
+                        text=_dedupe_lines(doc.text),
+                        metadata=getattr(doc, "metadata", None),
+                    )
+                )
+            docs = cleaned_docs
             total_chars = sum(len(d.text) for d in docs)
             logger.info(
                 f"Post-clean character count: {total_chars}"
