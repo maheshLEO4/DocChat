@@ -20,6 +20,21 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
+def _dedupe_lines(text: str) -> str:
+    """Remove duplicate lines while preserving first occurrence order."""
+    seen = set()
+    deduped = []
+    for line in text.splitlines():
+        key = line.strip()
+        if not key:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(line)
+    return "\n".join(deduped)
+
+
 def load_pdfs(collection_name: str) -> list:
     """Load PDFs from a collection using PyMuPDF; fall back to SimpleDirectoryReader if needed."""
     docs = []
@@ -66,11 +81,16 @@ def load_pdfs(collection_name: str) -> list:
             f"Loaded {len(docs)} page(s) from {upload_dir}. Total characters: {total_chars}"
         )
 
-        # Guard against huge duplicate extracts (often from PDF overlay artifacts).
+        # Auto-clean when extracts look suspiciously large.
         if total_chars > 5_000_000:
-            raise RuntimeError(
-                "Extracted text is unusually large. The PDF may contain duplicated text layers. "
-                "Try splitting the PDF or using a cleaner copy."
+            logger.warning(
+                "Extracted text is unusually large. Attempting auto-clean by de-duplicating lines."
+            )
+            for doc in docs:
+                doc.text = _dedupe_lines(doc.text)
+            total_chars = sum(len(d.text) for d in docs)
+            logger.info(
+                f"Post-clean character count: {total_chars}"
             )
 
     if not docs:
