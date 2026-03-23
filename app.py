@@ -101,17 +101,25 @@ upload_dir = get_upload_dir(current_col)
 index_dir = get_index_dir(current_col)
 
 # Collection Manager
-st.markdown(f"###  Documents in [{current_col}]")
-col_files = [f for f in os.listdir(upload_dir) if f.lower().endswith('.pdf')]
+st.markdown(f"### Documents in [{current_col}]")
+col_files = [f for f in os.listdir(upload_dir) if f.lower().endswith(".pdf")]
 
 if col_files:
+    col_a, col_b = st.columns([0.8, 0.2])
+    col_a.caption("Files currently in the upload folder")
+    if col_b.button("Clear all", key="clear_uploads"):
+        for f in col_files:
+            os.remove(os.path.join(upload_dir, f))
+        st.session_state.retriever = None
+        st.rerun()
+
     for f in col_files:
-        col1, col2 = st.columns([0.9, 0.1])
-        col1.write(f" {f}")
-        if col2.button("", key=f"del_{f}"):
+        row1, row2 = st.columns([0.85, 0.15])
+        row1.write(f"{f}")
+        if row2.button("Remove", key=f"del_{f}"):
             os.remove(os.path.join(upload_dir, f))
             # Delete removes item from the upload dir, prompt re-index
-            st.session_state.retriever = None 
+            st.session_state.retriever = None
             st.rerun()
 else:
     st.info("No documents in this collection.")
