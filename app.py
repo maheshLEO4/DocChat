@@ -25,7 +25,13 @@ st.markdown(
     }
 
     .stApp {
-        background: radial-gradient(1200px 600px at 20% 10%, #f3f7ff 0%, #f9fafb 40%, #ffffff 100%);
+        background: radial-gradient(1100px 700px at 15% 10%, #0f172a 0%, #111827 45%, #0b1220 100%);
+        color: #e5e7eb;
+    }
+
+    .main, .block-container {
+        background: transparent;
+        color: #e5e7eb;
     }
 
     .hero-title {
@@ -36,7 +42,7 @@ st.markdown(
     }
 
     .hero-subtitle {
-        color: #5b6675;
+        color: #cbd5f5;
         margin-top: 0;
         margin-bottom: 1.2rem;
     }
@@ -46,7 +52,7 @@ st.markdown(
         letter-spacing: 0.02em;
         text-transform: uppercase;
         font-size: 0.82rem;
-        color: #6b7280;
+        color: #a5b4fc;
         margin-bottom: 0.6rem;
     }
 
@@ -54,23 +60,39 @@ st.markdown(
         display: inline-block;
         padding: 0.2rem 0.6rem;
         border-radius: 999px;
-        background: #eef2ff;
-        color: #334155;
+        background: #1f2a44;
+        color: #c7d2fe;
         font-size: 0.75rem;
         margin-left: 0.4rem;
     }
 
     .stButton > button {
         border-radius: 10px;
-        border: 1px solid #dde2ea;
-        background: #111827;
+        border: 1px solid #334155;
+        background: #6366f1;
         color: #ffffff;
         font-weight: 600;
     }
 
     .stButton > button:hover {
-        background: #1f2937;
-        border-color: #1f2937;
+        background: #4f46e5;
+        border-color: #4f46e5;
+    }
+
+    .stTextInput input, .stTextArea textarea, .stSelectbox select, .stFileUploader label {
+        color: #e5e7eb;
+    }
+
+    .stTextInput input, .stTextArea textarea, .stSelectbox select {
+        background-color: #0f172a;
+        border: 1px solid #334155;
+    }
+
+    .stFileUploader {
+        background: #0f172a;
+        border: 1px dashed #334155;
+        border-radius: 12px;
+        padding: 0.75rem;
     }
     </style>
     """,
