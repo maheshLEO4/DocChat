@@ -13,7 +13,7 @@ def build_index(nodes: list) -> VectorStoreIndex:
     logger.info(f"Building VectorStoreIndex from {len(nodes)} nodes.")
     
     # Create the index from nodes directly. LlamaIndex handles large numbers of nodes internally.
-    index = VectorStoreIndex(nodes, show_progress=True)
+    index = VectorStoreIndex(nodes, show_progress=True, insert_batch_size=BATCH_SIZE)
     
     index.storage_context.persist(persist_dir=INDEX_DIR)
     logger.info(f"Index persisted to {INDEX_DIR}")
