@@ -11,6 +11,7 @@ def load_pdfs() -> list:
         UPLOAD_DIR,
         required_exts=[".pdf"],
         filename_as_id=True,
+        recursive=False
     ).load_data()
 
     logger.info(f"Loaded {len(docs)} document(s) from {UPLOAD_DIR}")

@@ -25,15 +25,25 @@ from config import (
 def _cleanup_uploads():
     """Delete all raw PDFs from UPLOAD_DIR on startup."""
     if os.path.exists(UPLOAD_DIR):
-        for name in os.listdir(UPLOAD_DIR):
-            path = os.path.join(UPLOAD_DIR, name)
-            if os.path.isfile(path) and name.lower().endswith(".pdf"):
-                try:
-                    os.remove(path)
-                except Exception:
-                    pass
+        for root, dirs, files in os.walk(UPLOAD_DIR):
+            for name in files:
+                path = os.path.join(root, name)
+                if os.path.isfile(path):
+                    try:
+                        os.remove(path)
+                    except Exception:
+                        pass
+        # Also clean INDEX_DIR to ensure complete fresh start
+        if os.path.exists(INDEX_DIR):
+            for root, dirs, files in os.walk(INDEX_DIR):
+                for name in files:
+                    path = os.path.join(root, name)
+                    try:
+                        os.remove(path)
+                    except Exception:
+                        pass
 
-# Use a process-level flag so this only runs once, not on every Streamlit rerun
+# Clean on every session start to prevent cross-session bleeding
 if "startup_cleanup_done" not in st.session_state:
     _cleanup_uploads()
     st.session_state["startup_cleanup_done"] = True
