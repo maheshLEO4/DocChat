@@ -1,12 +1,10 @@
 ﻿import os
-import shutil
 import streamlit as st
 
 from ingestion import ingest_pdfs
 from retriever import HybridRetriever
 from graph import AgentWorkflow
 from config import (
-    COLLECTIONS_DIR,
     get_upload_dir,
     get_index_dir,
     GROQ_FREE_MODELS,
@@ -15,7 +13,7 @@ from config import (
     DEFAULT_MODEL,
 )
 
-st.set_page_config(page_title="Multi-Agent RAG", layout="wide")
+st.set_page_config(page_title="Docchat", layout="wide")
 
 st.markdown(
     """
@@ -81,19 +79,9 @@ st.markdown(
 
 st.markdown('<div class="hero-title">Multi-Agent Hybrid RAG</div>', unsafe_allow_html=True)
 st.markdown(
-    '<p class="hero-subtitle">Create collections, index PDFs, and chat with scoped answers.</p>',
+    '<p class="hero-subtitle">Upload PDFs, index them, and chat with grounded answers.</p>',
     unsafe_allow_html=True,
 )
-
-def get_all_collections():
-    if not os.path.exists(COLLECTIONS_DIR):
-        return ["default"]
-    cols = [d for d in os.listdir(COLLECTIONS_DIR) if os.path.isdir(os.path.join(COLLECTIONS_DIR, d))]
-    if "default" not in cols:
-        cols.append("default")
-    return sorted(list(set(cols)))
-
-os.makedirs(COLLECTIONS_DIR, exist_ok=True)
 
 defaults = {
     "chat_history":          [],
@@ -101,7 +89,6 @@ defaults = {
     "retriever":             None,
     "model_provider":        DEFAULT_PROVIDER,
     "model_name":            DEFAULT_MODEL,
-    "active_collection":     "default"
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -126,50 +113,12 @@ with st.sidebar:
     st.session_state.model_provider = model_provider
     st.session_state.model_name = model_name
 
-    st.divider()
-    st.subheader("Collections")
-    all_collections = get_all_collections()
-    
-    selected_col = st.selectbox(
-        "Current Collection", 
-        all_collections, 
-        index=all_collections.index(st.session_state.active_collection) if st.session_state.active_collection in all_collections else 0
-    )
-    
-    # If collection changed:
-    if selected_col != st.session_state.active_collection:
-        st.session_state.active_collection = selected_col
-        st.session_state.retriever = None
-        st.session_state.chat_history = []
-        st.session_state.conversation_history = []
-        st.rerun()
-    
-    c_new = st.text_input("New Collection Name")
-    if st.button("Create Collection"):
-        if c_new and c_new.strip() not in all_collections:
-            get_upload_dir(c_new.strip())
-            st.session_state.active_collection = c_new.strip()
-            st.session_state.retriever = None
-            st.session_state.chat_history = []
-            st.session_state.conversation_history = []
-            st.rerun()
-            
-    if selected_col != "default":
-        if st.button(f"Delete '{selected_col}'"):
-            shutil.rmtree(os.path.join(COLLECTIONS_DIR, selected_col))
-            st.session_state.active_collection = "default"
-            st.session_state.retriever = None
-            st.session_state.chat_history = []
-            st.session_state.conversation_history = []
-            st.rerun()
+upload_dir = get_upload_dir()
+index_dir = get_index_dir()
 
-current_col = st.session_state.active_collection
-upload_dir = get_upload_dir(current_col)
-index_dir = get_index_dir(current_col)
-
-# Collection Manager
-st.markdown("<div class='section-title'>Collection files</div>", unsafe_allow_html=True)
-st.markdown(f"### {current_col} <span class='chip'>upload folder</span>", unsafe_allow_html=True)
+# Upload Manager
+st.markdown("<div class='section-title'>Upload files</div>", unsafe_allow_html=True)
+st.markdown("### Upload folder <span class='chip'>shared</span>", unsafe_allow_html=True)
 col_files = [f for f in os.listdir(upload_dir) if f.lower().endswith(".pdf")]
 
 if col_files:
@@ -190,11 +139,11 @@ if col_files:
             st.session_state.retriever = None
             st.rerun()
 else:
-    st.info("No documents in this collection.")
+    st.info("No documents in the upload folder.")
 
 st.markdown("<div class='section-title'>Add documents</div>", unsafe_allow_html=True)
 uploaded_files = st.file_uploader(
-    f"Add PDFs to '{current_col}'",
+    "Add PDFs",
     type=["pdf"],
     accept_multiple_files=True,
 )
@@ -208,25 +157,24 @@ if uploaded_files:
                 fh.write(f.getbuffer())
             saved_any = True
     if saved_any:
-        st.success("Files uploaded! Click 'Index Collection' to apply changes.")
+        st.success("Files uploaded! Click 'Index PDFs' to apply changes.")
         st.rerun()
 
 colbase_has_pdf = len(os.listdir(upload_dir)) > 0
 index_exists = os.path.exists(index_dir) and len(os.listdir(index_dir)) > 0
 
 if colbase_has_pdf:
-    if st.button("Index / Re-index Collection", type="primary"):
+    if st.button("Index PDFs", type="primary"):
         progress_bar = st.progress(0)
         status_text  = st.empty()
         try:
             ingest_pdfs(
-                collection_name=current_col,
                 progress_callback=lambda p, m: (progress_bar.progress(p), status_text.text(m))
             )
             st.session_state.retriever = None
             progress_bar.empty()
             status_text.empty()
-            st.success("Collection indexed! You can now ask questions.")
+            st.success("Index ready! You can now ask questions.")
             st.rerun()
         except Exception as exc:
             progress_bar.empty(); status_text.empty()
@@ -245,17 +193,17 @@ for msg in st.session_state.chat_history:
         with st.expander("Verification Report", expanded=False):
             st.markdown(msg["verification"])
 
-question = st.chat_input(f"Ask about '{current_col}'...")
+question = st.chat_input("Ask about your PDFs...")
 
 if question:
     if not index_exists:
-        st.warning("Please index the collection first before asking questions.")
+        st.warning("Please index the PDFs first before asking questions.")
         st.stop()
 
     if st.session_state.retriever is None:
         with st.spinner("Loading retriever..."):
             try:
-                st.session_state.retriever = HybridRetriever(collection_name=current_col)
+                st.session_state.retriever = HybridRetriever()
             except Exception as e:
                 st.error(str(e))
                 st.stop()

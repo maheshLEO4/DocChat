@@ -22,20 +22,14 @@ def _select_data_dir() -> str:
 
 
 DATA_DIR = _select_data_dir()
-COLLECTIONS_DIR = os.path.join(DATA_DIR, "collections")
 
-os.makedirs(COLLECTIONS_DIR, exist_ok=True)
-
-def get_collection_dir(collection_name: str) -> str:
-    return os.path.join(COLLECTIONS_DIR, collection_name)
-
-def get_upload_dir(collection_name: str) -> str:
-    path = os.path.join(get_collection_dir(collection_name), "raw_pdfs")
+def get_upload_dir() -> str:
+    path = os.path.join(DATA_DIR, "raw_pdfs")
     os.makedirs(path, exist_ok=True)
     return path
 
-def get_index_dir(collection_name: str) -> str:
-    path = os.path.join(get_collection_dir(collection_name), "llamaindex")
+def get_index_dir() -> str:
+    path = os.path.join(DATA_DIR, "llamaindex")
     os.makedirs(path, exist_ok=True)
     return path
 

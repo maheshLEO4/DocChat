@@ -21,11 +21,11 @@ def _extract_filename(metadata: dict) -> str:
     return "unknown"
 
 class HybridRetriever:
-    def __init__(self, collection_name: str):
-        index_dir = get_index_dir(collection_name)
+    def __init__(self):
+        index_dir = get_index_dir()
         if not os.path.exists(index_dir) or not os.listdir(index_dir):
             raise RuntimeError(
-                f"No index found for collection '{collection_name}'. Upload and index PDFs first."
+                "No index found. Upload and index PDFs first."
             )
 
         configure_embedding()

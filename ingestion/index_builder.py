@@ -6,13 +6,13 @@ from utils import get_logger
 
 logger = get_logger(__name__)
 
-def build_index(nodes: list, collection_name: str, progress_callback=None) -> VectorStoreIndex:
+def build_index(nodes: list, progress_callback=None) -> VectorStoreIndex:
     def _cb(p, m):
         if progress_callback:
             progress_callback(p, m)
         logger.info(m)
 
-    index_dir = get_index_dir(collection_name)
+    index_dir = get_index_dir()
     total = len(nodes)
     logger.info(f"Building index from {total} nodes")
     
@@ -34,7 +34,7 @@ def build_index(nodes: list, collection_name: str, progress_callback=None) -> Ve
     logger.info(f"Index persisted to {index_dir}")
     return index
 
-def ingest_pdfs(collection_name: str, progress_callback=None):
+def ingest_pdfs(progress_callback=None):
     from ingestion.embedding import configure_embedding
     from ingestion.loader import load_pdfs
     from ingestion.splitter import split_documents
@@ -48,7 +48,7 @@ def ingest_pdfs(collection_name: str, progress_callback=None):
     configure_embedding()
 
     _cb(0.10, "Loading PDF documents...")
-    docs = load_pdfs(collection_name)
+    docs = load_pdfs()
 
     _cb(0.25, f"Loaded {len(docs)} pages(s). Splitting into chunks...")
     nodes = split_documents(docs)
@@ -59,5 +59,5 @@ def ingest_pdfs(collection_name: str, progress_callback=None):
     def _build_cb(p, m):
         _cb(0.35 + p * 0.60, m)
 
-    build_index(nodes, collection_name, progress_callback=_build_cb)
+    build_index(nodes, progress_callback=_build_cb)
     _cb(1.00, f"Done! Indexed {total} chunks.")

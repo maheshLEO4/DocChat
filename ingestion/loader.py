@@ -35,10 +35,10 @@ def _dedupe_lines(text: str) -> str:
     return "\n".join(deduped)
 
 
-def load_pdfs(collection_name: str) -> list:
-    """Load PDFs from a collection using PyMuPDF; fall back to SimpleDirectoryReader if needed."""
+def load_pdfs() -> list:
+    """Load PDFs from the shared upload folder using PyMuPDF; fall back to SimpleDirectoryReader if needed."""
     docs = []
-    upload_dir = get_upload_dir(collection_name)
+    upload_dir = get_upload_dir()
     pdf_files = [f for f in os.listdir(upload_dir) if f.lower().endswith(".pdf")]
     errors = []
 
@@ -102,7 +102,7 @@ def load_pdfs(collection_name: str) -> list:
 
     if not docs:
         if not pdf_files:
-            raise RuntimeError("No PDF files found in the collection upload folder.")
+            raise RuntimeError("No PDF files found in the upload folder.")
         if errors:
             raise RuntimeError(
                 "PDFs were found but no extractable text was produced. "
