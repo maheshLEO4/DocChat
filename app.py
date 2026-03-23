@@ -16,7 +16,74 @@ from config import (
 )
 
 st.set_page_config(page_title="Multi-Agent RAG", layout="wide")
-st.title(" Multi-Agent Hybrid RAG Chatbot")
+
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Serif:wght@400;600&display=swap');
+
+    html, body, [class*="css"]  {
+        font-family: "Space Grotesk", sans-serif;
+    }
+
+    .stApp {
+        background: radial-gradient(1200px 600px at 20% 10%, #f3f7ff 0%, #f9fafb 40%, #ffffff 100%);
+    }
+
+    .hero-title {
+        font-family: "IBM Plex Serif", serif;
+        font-size: 2.2rem;
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+    }
+
+    .hero-subtitle {
+        color: #5b6675;
+        margin-top: 0;
+        margin-bottom: 1.2rem;
+    }
+
+    .section-title {
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        font-size: 0.82rem;
+        color: #6b7280;
+        margin-bottom: 0.6rem;
+    }
+
+    .chip {
+        display: inline-block;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #334155;
+        font-size: 0.75rem;
+        margin-left: 0.4rem;
+    }
+
+    .stButton > button {
+        border-radius: 10px;
+        border: 1px solid #dde2ea;
+        background: #111827;
+        color: #ffffff;
+        font-weight: 600;
+    }
+
+    .stButton > button:hover {
+        background: #1f2937;
+        border-color: #1f2937;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown('<div class="hero-title">Multi-Agent Hybrid RAG</div>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="hero-subtitle">Create collections, index PDFs, and chat with scoped answers.</p>',
+    unsafe_allow_html=True,
+)
 
 def get_all_collections():
     if not os.path.exists(COLLECTIONS_DIR):
@@ -41,7 +108,7 @@ for key, val in defaults.items():
         st.session_state[key] = val
 
 with st.sidebar:
-    st.header(" Settings")
+    st.header("Settings")
     enable_verification = st.checkbox("Enable Verification", value=False)
     
     st.divider()
@@ -60,7 +127,7 @@ with st.sidebar:
     st.session_state.model_name = model_name
 
     st.divider()
-    st.subheader(" Collections")
+    st.subheader("Collections")
     all_collections = get_all_collections()
     
     selected_col = st.selectbox(
@@ -88,7 +155,7 @@ with st.sidebar:
             st.rerun()
             
     if selected_col != "default":
-        if st.button(f" Delete '{selected_col}'"):
+        if st.button(f"Delete '{selected_col}'"):
             shutil.rmtree(os.path.join(COLLECTIONS_DIR, selected_col))
             st.session_state.active_collection = "default"
             st.session_state.retriever = None
@@ -101,7 +168,8 @@ upload_dir = get_upload_dir(current_col)
 index_dir = get_index_dir(current_col)
 
 # Collection Manager
-st.markdown(f"### Documents in [{current_col}]")
+st.markdown("<div class='section-title'>Collection files</div>", unsafe_allow_html=True)
+st.markdown(f"### {current_col} <span class='chip'>upload folder</span>", unsafe_allow_html=True)
 col_files = [f for f in os.listdir(upload_dir) if f.lower().endswith(".pdf")]
 
 if col_files:
@@ -124,7 +192,12 @@ if col_files:
 else:
     st.info("No documents in this collection.")
 
-uploaded_files = st.file_uploader(f"Add PDFs to '{current_col}'", type=["pdf"], accept_multiple_files=True)
+st.markdown("<div class='section-title'>Add documents</div>", unsafe_allow_html=True)
+uploaded_files = st.file_uploader(
+    f"Add PDFs to '{current_col}'",
+    type=["pdf"],
+    accept_multiple_files=True,
+)
 
 if uploaded_files:
     saved_any = False
@@ -142,7 +215,7 @@ colbase_has_pdf = len(os.listdir(upload_dir)) > 0
 index_exists = os.path.exists(index_dir) and len(os.listdir(index_dir)) > 0
 
 if colbase_has_pdf:
-    if st.button(" Index / Re-index Collection", type="primary"):
+    if st.button("Index / Re-index Collection", type="primary"):
         progress_bar = st.progress(0)
         status_text  = st.empty()
         try:
@@ -153,29 +226,30 @@ if colbase_has_pdf:
             st.session_state.retriever = None
             progress_bar.empty()
             status_text.empty()
-            st.success(" Collection indexed! You can now ask questions.")
+            st.success("Collection indexed! You can now ask questions.")
             st.rerun()
         except Exception as exc:
             progress_bar.empty(); status_text.empty()
-            st.error(f" Indexing failed: {exc}")
+            st.error(f"Indexing failed: {exc}")
 
 st.divider()
 
 # Chat
+st.markdown("<div class='section-title'>Conversation</div>", unsafe_allow_html=True)
 for msg in st.session_state.chat_history:
     st.chat_message("user").write(msg["user"])
     st.chat_message("assistant").write(msg["assistant"])
     if msg.get("citations"):
-        st.caption(" Sources: " + "  ".join(f"{c}" for c in msg["citations"]))
+        st.caption("Sources: " + "  ".join(f"{c}" for c in msg["citations"]))
     if msg.get("verification"):
-        with st.expander(" Verification Report", expanded=False):
+        with st.expander("Verification Report", expanded=False):
             st.markdown(msg["verification"])
 
 question = st.chat_input(f"Ask about '{current_col}'...")
 
 if question:
     if not index_exists:
-        st.warning(" Please index the collection first before asking questions.")
+        st.warning("Please index the collection first before asking questions.")
         st.stop()
 
     if st.session_state.retriever is None:
@@ -212,11 +286,11 @@ if question:
         citations = final_state.get("citations", [])
         if citations:
             unique_citations = list(dict.fromkeys(citations))
-            st.caption(" Sources: " + "  ".join(f"{c}" for c in unique_citations))
+            st.caption("Sources: " + "  ".join(f"{c}" for c in unique_citations))
 
         vr = final_state.get("verification_report")
         if vr:
-            with st.expander(" Verification Report"):
+            with st.expander("Verification Report"):
                 st.markdown(vr)
 
         st.session_state.chat_history.append({
