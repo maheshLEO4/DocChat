@@ -25,7 +25,7 @@ st.markdown(
     }
 
     .stApp {
-        background: radial-gradient(1100px 700px at 15% 10%, #0f172a 0%, #111827 45%, #0b1220 100%);
+        background: radial-gradient(1100px 700px at 15% 10%, #0a0a0a 0%, #0e0e0e 45%, #121212 100%);
         color: #e5e7eb;
     }
 
@@ -42,7 +42,7 @@ st.markdown(
     }
 
     .hero-subtitle {
-        color: #cbd5f5;
+        color: #cfcfcf;
         margin-top: 0;
         margin-bottom: 1.2rem;
     }
@@ -52,7 +52,7 @@ st.markdown(
         letter-spacing: 0.02em;
         text-transform: uppercase;
         font-size: 0.82rem;
-        color: #a5b4fc;
+        color: #bdbdbd;
         margin-bottom: 0.6rem;
     }
 
@@ -60,23 +60,23 @@ st.markdown(
         display: inline-block;
         padding: 0.2rem 0.6rem;
         border-radius: 999px;
-        background: #1f2a44;
-        color: #c7d2fe;
+        background: #1f1f1f;
+        color: #e0e0e0;
         font-size: 0.75rem;
         margin-left: 0.4rem;
     }
 
     .stButton > button {
         border-radius: 10px;
-        border: 1px solid #334155;
-        background: #6366f1;
+        border: 1px solid #2d2d2d;
+        background: #1c1c1c;
         color: #ffffff;
         font-weight: 600;
     }
 
     .stButton > button:hover {
-        background: #4f46e5;
-        border-color: #4f46e5;
+        background: #2a2a2a;
+        border-color: #2a2a2a;
     }
 
     .stTextInput input, .stTextArea textarea, .stSelectbox select, .stFileUploader label {
@@ -84,13 +84,13 @@ st.markdown(
     }
 
     .stTextInput input, .stTextArea textarea, .stSelectbox select {
-        background-color: #0f172a;
-        border: 1px solid #334155;
+        background-color: #0f0f0f;
+        border: 1px solid #2d2d2d;
     }
 
     .stFileUploader {
-        background: #0f172a;
-        border: 1px dashed #334155;
+        background: #0f0f0f;
+        border: 1px dashed #2d2d2d;
         border-radius: 12px;
         padding: 0.75rem;
     }
