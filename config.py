@@ -14,8 +14,8 @@ INDEX_DIR = os.path.join(DATA_DIR, "llamaindex")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(INDEX_DIR, exist_ok=True)
 
-# Embedding
-EMBED_MODEL = "BAAI/bge-base-en-v1.5"
+# Embedding (Using a smaller, much faster model for CPU environments)
+EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 
 # Retrieval
 TOP_K = 6
