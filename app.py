@@ -4,7 +4,7 @@ import streamlit as st
 
 from ingestion import ingest_pdfs
 from retriever import HybridRetriever
-from graph import AgentWorkflow, Turn
+from graph import AgentWorkflow
 from config import (
     COLLECTIONS_DIR,
     get_upload_dir,
@@ -182,39 +182,31 @@ if question:
     
     with st.chat_message("assistant"):
         status = st.empty()
-        status.info("Retrieving documents...")
-
-        retrieved_docs = st.session_state.retriever.invoke(question)
-        if not retrieved_docs:
-            status.warning("No relevant chunk found.")
-            st.stop()
-
         status.info("Reasoning...")
-        turn = Turn(
-            question=question,
-            retrieved_docs=retrieved_docs,
-            conversation_history=st.session_state.conversation_history.copy(),
-            enable_verification=enable_verification,
-            provider=st.session_state.model_provider,
-            model=st.session_state.model_name
-        )
 
-        wf = AgentWorkflow()
-        final_state = wf.run(turn)
+        wf = AgentWorkflow(enable_verification=enable_verification)
+        final_state = wf.run(
+            question=question,
+            retriever=st.session_state.retriever,
+            conversation_history=st.session_state.conversation_history.copy(),
+            model_provider=st.session_state.model_provider,
+            model_name=st.session_state.model_name,
+        )
 
         status.empty()
 
-        ans = final_state.get("final_answer", "")
+        ans = final_state.get("draft_answer", "")
         if not ans:
             st.warning("Could not generate an answer.")
             st.stop()
 
         st.write(ans)
-        citations = [d.metadata.get('file_name', 'unknown') for d in retrieved_docs]
-        unique_citations = list(dict.fromkeys(citations))
-        st.caption(" Sources: " + "  ".join(f"{c}" for c in unique_citations))
+        citations = final_state.get("citations", [])
+        if citations:
+            unique_citations = list(dict.fromkeys(citations))
+            st.caption(" Sources: " + "  ".join(f"{c}" for c in unique_citations))
 
-        vr = final_state.get("verification_result")
+        vr = final_state.get("verification_report")
         if vr:
             with st.expander(" Verification Report"):
                 st.markdown(vr)
@@ -222,11 +214,11 @@ if question:
         st.session_state.chat_history.append({
             "user": question,
             "assistant": ans,
-            "citations": unique_citations,
-            "verification": vr
+            "citations": citations,
+            "verification": vr,
         })
 
-        st.session_state.conversation_history.append({"role": "user", "content": question})
-        st.session_state.conversation_history.append({"role": "assistant", "content": ans})
-        if len(st.session_state.conversation_history) > 8:
-            st.session_state.conversation_history = st.session_state.conversation_history[-8:]
+        st.session_state.conversation_history = final_state.get(
+            "updated_history",
+            st.session_state.conversation_history,
+        )
