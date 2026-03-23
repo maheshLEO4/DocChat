@@ -79,6 +79,17 @@ st.markdown(
         border-color: #2a2a2a;
     }
 
+    button[kind="primary"] {
+        background: #b91c1c;
+        border-color: #7f1d1d;
+        color: #ffffff;
+    }
+
+    button[kind="primary"]:hover {
+        background: #991b1b;
+        border-color: #991b1b;
+    }
+
     .stTextInput input, .stTextArea textarea, .stSelectbox select, .stFileUploader label {
         color: #e5e7eb;
     }
@@ -93,6 +104,17 @@ st.markdown(
         border: 1px dashed #2d2d2d;
         border-radius: 12px;
         padding: 0.75rem;
+    }
+
+    .status-pill {
+        display: inline-block;
+        padding: 0.35rem 0.7rem;
+        border-radius: 999px;
+        background: #1a1a1a;
+        border: 1px solid #2d2d2d;
+        color: #e5e7eb;
+        font-size: 0.85rem;
+        font-weight: 600;
     }
     </style>
     """,
@@ -135,74 +157,69 @@ with st.sidebar:
     st.session_state.model_provider = model_provider
     st.session_state.model_name = model_name
 
-upload_dir = get_upload_dir()
-index_dir = get_index_dir()
+    st.divider()
+    st.subheader("Upload")
+    st.caption("Shared upload folder")
 
-# Upload Manager
-st.markdown("<div class='section-title'>Upload files</div>", unsafe_allow_html=True)
-st.markdown("### Upload folder <span class='chip'>shared</span>", unsafe_allow_html=True)
-col_files = [f for f in os.listdir(upload_dir) if f.lower().endswith(".pdf")]
+    upload_dir = get_upload_dir()
+    index_dir = get_index_dir()
 
-if col_files:
-    col_a, col_b = st.columns([0.8, 0.2])
-    col_a.caption("Files currently in the upload folder")
-    if col_b.button("Clear all", key="clear_uploads"):
+    col_files = [f for f in os.listdir(upload_dir) if f.lower().endswith(".pdf")]
+
+    if col_files:
+        if st.button("Clear all", key="clear_uploads"):
+            for f in col_files:
+                os.remove(os.path.join(upload_dir, f))
+            st.session_state.retriever = None
+            st.rerun()
+
         for f in col_files:
-            os.remove(os.path.join(upload_dir, f))
-        st.session_state.retriever = None
-        st.rerun()
+            row1, row2 = st.columns([0.82, 0.18])
+            row1.write(f"{f}")
+            if row2.button("Remove", key=f"del_{f}"):
+                os.remove(os.path.join(upload_dir, f))
+                st.session_state.retriever = None
+                st.rerun()
+    else:
+        st.info("No documents in the upload folder.")
 
-    for f in col_files:
-        row1, row2 = st.columns([0.85, 0.15])
-        row1.write(f"{f}")
-        if row2.button("Remove", key=f"del_{f}"):
-            os.remove(os.path.join(upload_dir, f))
-            # Delete removes item from the upload dir, prompt re-index
-            st.session_state.retriever = None
+    uploaded_files = st.file_uploader(
+        "Add PDFs",
+        type=["pdf"],
+        accept_multiple_files=True,
+    )
+
+    if uploaded_files:
+        saved_any = False
+        for f in uploaded_files:
+            dest = os.path.join(upload_dir, f.name)
+            if not os.path.exists(dest):
+                with open(dest, "wb") as fh:
+                    fh.write(f.getbuffer())
+                saved_any = True
+        if saved_any:
+            st.success("Files uploaded! Click 'Index PDFs' to apply changes.")
             st.rerun()
-else:
-    st.info("No documents in the upload folder.")
 
-st.markdown("<div class='section-title'>Add documents</div>", unsafe_allow_html=True)
-uploaded_files = st.file_uploader(
-    "Add PDFs",
-    type=["pdf"],
-    accept_multiple_files=True,
-)
+    colbase_has_pdf = len(os.listdir(upload_dir)) > 0
+    index_exists = os.path.exists(index_dir) and len(os.listdir(index_dir)) > 0
 
-if uploaded_files:
-    saved_any = False
-    for f in uploaded_files:
-        dest = os.path.join(upload_dir, f.name)
-        if not os.path.exists(dest):
-            with open(dest, "wb") as fh:
-                fh.write(f.getbuffer())
-            saved_any = True
-    if saved_any:
-        st.success("Files uploaded! Click 'Index PDFs' to apply changes.")
-        st.rerun()
-
-colbase_has_pdf = len(os.listdir(upload_dir)) > 0
-index_exists = os.path.exists(index_dir) and len(os.listdir(index_dir)) > 0
-
-if colbase_has_pdf:
-    if st.button("Index PDFs", type="primary"):
-        progress_bar = st.progress(0)
-        status_text  = st.empty()
-        try:
-            ingest_pdfs(
-                progress_callback=lambda p, m: (progress_bar.progress(p), status_text.text(m))
-            )
-            st.session_state.retriever = None
-            progress_bar.empty()
-            status_text.empty()
-            st.success("Index ready! You can now ask questions.")
-            st.rerun()
-        except Exception as exc:
-            progress_bar.empty(); status_text.empty()
-            st.error(f"Indexing failed: {exc}")
-
-st.divider()
+    if colbase_has_pdf:
+        if st.button("Index PDFs", type="primary"):
+            progress_bar = st.progress(0)
+            status_text  = st.empty()
+            try:
+                ingest_pdfs(
+                    progress_callback=lambda p, m: (progress_bar.progress(p), status_text.text(m))
+                )
+                st.session_state.retriever = None
+                progress_bar.empty()
+                status_text.empty()
+                st.success("Index ready! You can now ask questions.")
+                st.rerun()
+            except Exception as exc:
+                progress_bar.empty(); status_text.empty()
+                st.error(f"Indexing failed: {exc}")
 
 # Chat
 st.markdown("<div class='section-title'>Conversation</div>", unsafe_allow_html=True)
@@ -234,7 +251,7 @@ if question:
     
     with st.chat_message("assistant"):
         status = st.empty()
-        status.info("Reasoning...")
+        status.markdown("<span class='status-pill'>Thinking...</span>", unsafe_allow_html=True)
 
         wf = AgentWorkflow(enable_verification=enable_verification)
         final_state = wf.run(
