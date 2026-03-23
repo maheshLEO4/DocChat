@@ -1,4 +1,5 @@
 import os
+import shutil
 import streamlit as st
 
 from ingestion import ingest_pdfs
@@ -16,6 +17,28 @@ from config import (
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Startup cleanup — runs once per process launch
+# Wipes raw PDFs from UPLOAD_DIR on every restart.
+# The index (embeddings) in INDEX_DIR is kept so re-indexing is not needed
+# unless the user uploads new files.
+# ─────────────────────────────────────────────────────────────────────────────
+def _cleanup_uploads():
+    """Delete all raw PDFs from UPLOAD_DIR on startup."""
+    if os.path.exists(UPLOAD_DIR):
+        for name in os.listdir(UPLOAD_DIR):
+            path = os.path.join(UPLOAD_DIR, name)
+            if os.path.isfile(path) and name.lower().endswith(".pdf"):
+                try:
+                    os.remove(path)
+                except Exception:
+                    pass
+
+# Use a process-level flag so this only runs once, not on every Streamlit rerun
+if "startup_cleanup_done" not in st.session_state:
+    _cleanup_uploads()
+    st.session_state["startup_cleanup_done"] = True
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Page config
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Multi-Agent RAG", layout="wide")
@@ -25,9 +48,7 @@ st.title("📚 Multi-Agent Hybrid RAG Chatbot")
 # Session state initialisation
 # ─────────────────────────────────────────────────────────────────────────────
 defaults = {
-    # Each item: {"user": str, "assistant": str, "citations": list, "verification": str}
     "chat_history":          [],
-    # Rolling window of Turn dicts passed into the graph
     "conversation_history":  [],
     "retriever":             None,
     "files_indexed":         False,
@@ -93,7 +114,6 @@ if uploaded_files:
     if current_names != st.session_state.uploaded_file_names:
         st.session_state.files_indexed = False
         st.session_state.uploaded_file_names = current_names
-        # New files → reset retriever and conversation so history is not stale
         st.session_state.retriever = None
         st.session_state.conversation_history = []
 
@@ -104,11 +124,13 @@ if uploaded_files:
 
         if st.button("📑 Index PDFs", type="primary", use_container_width=True):
             os.makedirs(UPLOAD_DIR, exist_ok=True)
-            incoming_names = {f.name for f in uploaded_files}
+
+            # Wipe UPLOAD_DIR before writing new files so no old PDFs bleed in
             for name in os.listdir(UPLOAD_DIR):
                 path = os.path.join(UPLOAD_DIR, name)
-                if os.path.isfile(path) and name.lower().endswith(".pdf") and name not in incoming_names:
+                if os.path.isfile(path):
                     os.remove(path)
+
             for f in uploaded_files:
                 dest = os.path.join(UPLOAD_DIR, f.name)
                 with open(dest, "wb") as fh:
@@ -124,7 +146,7 @@ if uploaded_files:
                     )
                 )
                 st.session_state.files_indexed = True
-                st.session_state.retriever = None          # force reload
+                st.session_state.retriever = None
                 progress_bar.empty()
                 status_text.empty()
                 st.success("✅ PDFs indexed! You can now ask questions.")
@@ -174,7 +196,6 @@ if question:
         st.warning("⚠️ Please upload and index PDFs first.")
         st.stop()
 
-    # Lazy-load retriever (cached across turns)
     if st.session_state.retriever is None:
         with st.spinner("Loading retriever…"):
             st.session_state.retriever = HybridRetriever()
@@ -191,10 +212,8 @@ if question:
             model_name=st.session_state.model_name,
         )
 
-    # ── Persist updated history window back to session ────────────────────
     st.session_state.conversation_history = result["updated_history"]
 
-    # ── Save full display record ──────────────────────────────────────────
     st.session_state.chat_history.append({
         "user":         question,
         "assistant":    result["draft_answer"],
@@ -202,7 +221,6 @@ if question:
         "verification": result.get("verification_report", ""),
     })
 
-    # ── Render current turn ───────────────────────────────────────────────
     st.chat_message("user").write(question)
     st.chat_message("assistant").write(result["draft_answer"])
 
