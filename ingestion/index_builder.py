@@ -9,22 +9,12 @@ logger = get_logger(__name__)
 def build_index(nodes: list) -> VectorStoreIndex:
     """
     Build a VectorStoreIndex from nodes.
-    Processes in batches for large corpora.
     """
-    total = len(nodes)
-
-    if total <= BATCH_SIZE:
-        logger.info(f"Building index from {total} node(s) in one pass")
-        index = VectorStoreIndex(nodes)
-    else:
-        logger.info(f"Large corpus ({total} nodes) - batching in groups of {BATCH_SIZE}")
-        index = VectorStoreIndex(nodes[:BATCH_SIZE])
-        for start in range(BATCH_SIZE, total, BATCH_SIZE):
-            batch = nodes[start : start + BATCH_SIZE]
-            index.insert_nodes(batch)
-            done = min(start + BATCH_SIZE, total)
-            logger.info(f"  indexed {done}/{total} nodes")
-
+    logger.info(f"Building VectorStoreIndex from {len(nodes)} nodes.")
+    
+    # Create the index from nodes directly. LlamaIndex handles large numbers of nodes internally.
+    index = VectorStoreIndex(nodes, show_progress=True)
+    
     index.storage_context.persist(persist_dir=INDEX_DIR)
     logger.info(f"Index persisted to {INDEX_DIR}")
     return index
