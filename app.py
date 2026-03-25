@@ -36,7 +36,7 @@ st.markdown(
 
     .hero-title {
         font-family: "IBM Plex Serif", serif;
-        font-size: 2.2rem;
+        font-size: 15rem;
         font-weight: 600;
         margin-bottom: 0.2rem;
     }
@@ -174,52 +174,55 @@ with st.sidebar:
             st.rerun()
 
         for f in col_files:
-            row1, row2 = st.columns([0.82, 0.18])
+            row1, row2 = st.columns([0.86, 0.14])
             row1.write(f"{f}")
-            if row2.button("Remove", key=f"del_{f}"):
+            if row2.button("🗑", key=f"del_{f}"):
                 os.remove(os.path.join(upload_dir, f))
                 st.session_state.retriever = None
                 st.rerun()
     else:
         st.info("No documents in the upload folder.")
 
-    uploaded_files = st.file_uploader(
-        "Add PDFs",
-        type=["pdf"],
-        accept_multiple_files=True,
-    )
+colbase_has_pdf = len(os.listdir(get_upload_dir())) > 0
+index_exists = os.path.exists(get_index_dir()) and len(os.listdir(get_index_dir())) > 0
 
-    if uploaded_files:
-        saved_any = False
-        for f in uploaded_files:
-            dest = os.path.join(upload_dir, f.name)
-            if not os.path.exists(dest):
-                with open(dest, "wb") as fh:
-                    fh.write(f.getbuffer())
-                saved_any = True
-        if saved_any:
-            st.success("Files uploaded! Click 'Index PDFs' to apply changes.")
+st.markdown("<div class='section-title'>Add Files</div>", unsafe_allow_html=True)
+uploaded_files = st.file_uploader(
+    "Add PDFs",
+    type=["pdf"],
+    accept_multiple_files=True,
+)
+
+if uploaded_files:
+    saved_any = False
+    upload_dir = get_upload_dir()
+    for f in uploaded_files:
+        dest = os.path.join(upload_dir, f.name)
+        if not os.path.exists(dest):
+            with open(dest, "wb") as fh:
+                fh.write(f.getbuffer())
+            saved_any = True
+    if saved_any:
+        st.success("Files uploaded! Click 'Index PDFs' to apply changes.")
+        st.rerun()
+
+if colbase_has_pdf:
+    if st.button("Index PDFs", type="primary"):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        try:
+            ingest_pdfs(
+                progress_callback=lambda p, m: (progress_bar.progress(p), status_text.text(m))
+            )
+            st.session_state.retriever = None
+            progress_bar.empty()
+            status_text.empty()
+            st.success("Index ready! You can now ask questions.")
             st.rerun()
-
-    colbase_has_pdf = len(os.listdir(upload_dir)) > 0
-    index_exists = os.path.exists(index_dir) and len(os.listdir(index_dir)) > 0
-
-    if colbase_has_pdf:
-        if st.button("Index PDFs", type="primary"):
-            progress_bar = st.progress(0)
-            status_text  = st.empty()
-            try:
-                ingest_pdfs(
-                    progress_callback=lambda p, m: (progress_bar.progress(p), status_text.text(m))
-                )
-                st.session_state.retriever = None
-                progress_bar.empty()
-                status_text.empty()
-                st.success("Index ready! You can now ask questions.")
-                st.rerun()
-            except Exception as exc:
-                progress_bar.empty(); status_text.empty()
-                st.error(f"Indexing failed: {exc}")
+        except Exception as exc:
+            progress_bar.empty()
+            status_text.empty()
+            st.error(f"Indexing failed: {exc}")
 
 # Chat
 st.markdown("<div class='section-title'>Conversation</div>", unsafe_allow_html=True)

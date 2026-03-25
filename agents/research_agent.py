@@ -16,7 +16,7 @@ class ResearchAgent(BaseAgent):
     def __init__(self, model_provider: str | None = None, model_name: str | None = None):
         super().__init__(
             prompt_file="research.txt",
-            temperature=0.1,
+            temperature=0.3,
             max_tokens=600,
             model_provider=model_provider,
             model_name=model_name,
