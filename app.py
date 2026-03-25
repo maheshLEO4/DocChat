@@ -36,7 +36,7 @@ st.markdown(
 
     .hero-title {
         font-family: "IBM Plex Serif", serif;
-        font-size: 15rem;
+        font-size: 5rem;
         font-weight: 600;
         margin-bottom: 0.2rem;
     }
