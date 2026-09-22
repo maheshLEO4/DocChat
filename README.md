@@ -1,4 +1,4 @@
-**---
+
 
 title: Multi-Agent Hybrid RAG
 emoji: "📝"
