@@ -1,13 +1,5 @@
 
 
-title: Multi-Agent Hybrid RAG
-emoji: "📝"
-colorFrom: yellow
-colorTo: red
-sdk: docker
-pinned: false
--------------
-
 # 🚀 DocChat: Multi-Agent Hybrid RAG
 
 Upload your PDFs, index them on the fly, and interact with a sophisticated multi-agent Retrieval-Augmented Generation (RAG) workflow. Powered by Streamlit, LangGraph/custom agents, and support for high-speed LLM providers like Groq and Google Gemini.
