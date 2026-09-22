@@ -1,4 +1,4 @@
----
+**---
 
 title: Multi-Agent Hybrid RAG
 emoji: "📝"
@@ -111,3 +111,4 @@ streamlit run app.py
 ## 🔗 Repository
 
 GitHub: https://github.com/maheshLEO4/DocChat
+**
