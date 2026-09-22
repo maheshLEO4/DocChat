@@ -2,8 +2,8 @@
 
 title: Multi-Agent Hybrid RAG
 emoji: "📝"
-colorFrom: "yellow"
-colorTo: "red"
+colorFrom: yellow
+colorTo: red
 sdk: docker
 pinned: false
 -------------
@@ -60,7 +60,7 @@ pip install -r requirements.txt
 
 ### 3. Set up environment variables
 
-Create a `.env` file in the root directory and add your API keys:
+Create a `.env` file in the root directory:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here
@@ -77,41 +77,37 @@ streamlit run app.py
 
 ## 🌐 Deployment
 
-### Option 1: Hugging Face Spaces (Docker)
+### Hugging Face Spaces
 
-1. Create a new **Space** on Hugging Face and choose **Docker** as the SDK.
-2. Upload the contents of this repository to your Space.
-3. Go to **Settings → Secrets** and add a secret named either:
+1. Create a new Hugging Face Space.
+2. Select **Docker** as the SDK.
+3. Upload the repository files.
+4. Go to **Settings → Secrets**.
+5. Add your API key as a secret:
 
    * `GROQ_API_KEY`
-   * `GEMINI_API_KEY`
-4. Launch your Space and select your preferred provider and model from the app sidebar.
+   * or `GEMINI_API_KEY`
+6. Launch the Space.
 
-### Option 2: Render
+### Render
 
 1. Create a new **Web Service** connected to this repository.
-2. Select **Docker** as the environment using the included `Dockerfile`.
-3. Add the following environment variables under **Environment**:
-
-```text
-GROQ_API_KEY=your_groq_api_key
-GEMINI_API_KEY=your_gemini_api_key
-APP_DATA_DIR=/var/data
-```
-
-4. Attach a **Persistent Disk** and mount it at `/var/data` to ensure uploaded PDFs and vector indexes persist across container restarts.
-5. The container will automatically bind to Render's dynamic `PORT`.
+2. Select **Docker** as the environment.
+3. Add the required environment variables.
+4. Attach a persistent disk if uploaded documents and indexes need to survive restarts.
+5. Deploy the service.
 
 ---
 
 ## 📝 Notes & Tips
 
-* **Runtime Indexing:** Indexing occurs dynamically after you upload your documents. Large PDFs may take a few minutes to fully process.
-* **Persistence:** Always use a persistent disk in production environments such as Render so that uploaded documents and indexes survive restarts.
-* **API Keys:** Never commit your `.env` file or API keys to GitHub. Add `.env` to your `.gitignore`.
+* **Runtime Indexing:** Documents are parsed, chunked, embedded, and indexed after upload.
+* **Large PDFs:** Processing large documents may take some time.
+* **Persistence:** Persistent storage is recommended when deploying on platforms where containers can restart.
+* **Security:** Never commit API keys or `.env` files to GitHub.
 
 ---
 
 ## 🔗 Repository
 
-**GitHub:** https://github.com/maheshLEO4/DocChat.git
+GitHub: https://github.com/maheshLEO4/DocChat
